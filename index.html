@@ -170,6 +170,7 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 <div class="scan-stage"><video id="scanVideo" autoplay playsinline muted hidden></video><img id="scanPhoto" alt="Photo de la carte" hidden><div class="scan-corners" aria-hidden="true"></div><p id="scanStatus" class="scan-note" style="padding:20px;text-align:center">Caméra non démarrée</p></div>
 <div class="scan-actions"><button class="go" id="startCam">Activer la caméra</button><button class="go alt" id="takePhoto" hidden>Prendre une photo</button></div>
 <input id="scanFile" type="file" accept="image/*" capture="environment" hidden><button class="go alt" id="choosePhoto">Prendre / choisir une photo</button>
+<button class="go" id="recognize" hidden>Reconnaître la carte</button><p id="ocrStatus" class="scan-note" role="status" aria-live="polite"></p><div id="ocrResults"></div>
 <button class="go alt" id="manualSearch">Rechercher par nom / code</button>
 <p class="scan-note">La photo reste sur cet appareil et n'est pas envoyée à un service de reconnaissance.</p>
 </div>
@@ -446,7 +447,15 @@ $("cal").addEventListener("toggle",function(){syncCal();draw()});
 $("q").addEventListener("input",renderRes);
 $("f").addEventListener("input",renderColl);
 $("sortb").onclick=function(){renderSheet();$("sheet").hidden=false};
-var cameraStream=null,photoUrl=null;
+var cameraStream=null,photoUrl=null,ocrBusy=false;
+function photoReady(){ $("recognize").hidden=false;$("ocrResults").innerHTML="";$("ocrStatus").textContent="" }
+function loadOCR(){return new Promise(function(resolve,reject){if(window.Tesseract){resolve();return}var sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";sc.onload=resolve;sc.onerror=function(){reject(new Error("Impossible de charger le moteur OCR. Vérifie ta connexion."))};document.head.appendChild(sc)})}
+function ocrNorm(t){return norm(t).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim()}
+function editDistance(a,b){var p=Array.from({length:b.length+1},(_,i)=>i);for(var i=1;i<=a.length;i++){var q=[i];for(var j=1;j<=b.length;j++)q[j]=Math.min(q[j-1]+1,p[j]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=q}return p[b.length]}
+function ocrCandidates(raw){var lines=raw.split(/\n/).map(ocrNorm).filter(Boolean),flat=ocrNorm(raw),scores=[];ALL.forEach(function(c){var name=ocrNorm(c.n),words=name.split(" "),codeTxt=ocrNorm(code(c)),score=0;if(name.length<3)return;if(flat.includes(name))score=110+name.length/10;else if(lines.some(l=>l.includes(name)))score=105;else{var best=0;lines.forEach(function(l){if(l.length<3)return;var diff=editDistance(name,l);var similarity=1-diff/Math.max(name.length,l.length);best=Math.max(best,similarity)});score=best*85;if(words.length>1&&words.every(w=>w.length<3||flat.includes(w)))score=Math.max(score,93)}if(flat.includes(codeTxt))score+=50;scores.push({c:c,score:score})});return scores.sort((a,b)=>b.score-a.score).filter(x=>x.score>=55).slice(0,5)}
+function showOCRMatches(matches){var out=$("ocrResults");out.innerHTML="";if(!matches.length){$("ocrStatus").textContent="Aucune correspondance fiable. Essaie une photo plus nette ou la recherche manuelle.";return}$("ocrStatus").textContent="Vérifie la carte détectée avant de confirmer :";matches.forEach(function(m){var b=document.createElement("button");b.className="rs";var img=document.createElement("img");img.src=m.c.img;img.alt="";var sp=document.createElement("span");var strong=document.createElement("b");strong.textContent=m.c.n;var small=document.createElement("i");small.textContent=code(m.c)+" · Ajouter cette carte";sp.append(strong,small);b.append(img,sp);b.onclick=function(){var loc=curLoc();addCopy(m.c.id,loc,1);$("ocrStatus").textContent="✓ Ajoutée : "+m.c.n+" (×"+cnt(m.c.id)+")";$("ocrStatus").style.color="var(--ok)"};out.appendChild(b)})}
+$("recognize").onclick=async function(){if(ocrBusy)return;ocrBusy=true;this.disabled=true;$("ocrResults").innerHTML="";$("ocrStatus").style.color="";$("ocrStatus").textContent="Chargement du moteur de reconnaissance…";var worker;try{await loadOCR();$("ocrStatus").textContent="Lecture du texte de la carte… (cela peut prendre quelques secondes)";worker=await Tesseract.createWorker("eng");var result=await worker.recognize($("scanPhoto").src);showOCRMatches(ocrCandidates(result.data.text||""))}catch(err){$("ocrStatus").textContent="Reconnaissance impossible : "+err.message}finally{if(worker)await worker.terminate();ocrBusy=false;this.disabled=false}};
+
 function stopCam(){if(cameraStream){cameraStream.getTracks().forEach(function(t){t.stop()});cameraStream=null}$("scanVideo").srcObject=null;$("scanVideo").hidden=true;$("takePhoto").hidden=true}
 function addMode(scan){if(!scan)stopCam();$("pn").hidden=scan;$("ps").hidden=!scan;$("mn").setAttribute("aria-pressed",String(!scan));$("ms").setAttribute("aria-pressed",String(scan))}
 $("mn").onclick=function(){addMode(false)};
@@ -455,11 +464,11 @@ $("scanLaunch").onclick=function(){addMode(true)};
 $("manualSearch").onclick=function(){addMode(false);$("q").focus()};
 $("startCam").onclick=async function(){
 if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$("scanStatus").textContent="Caméra indisponible ici. Essaie en HTTPS ou utilise le bouton photo.";return}
-try{stopCam();cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});$("scanVideo").srcObject=cameraStream;$("scanVideo").hidden=false;$("scanPhoto").hidden=true;$("scanStatus").hidden=true;$("takePhoto").hidden=false;await $("scanVideo").play()}catch(err){$("scanStatus").hidden=false;$("scanStatus").textContent="Impossible d'accéder à la caméra. Vérifie les autorisations ou choisis une photo."}
+try{stopCam();cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});$("scanVideo").srcObject=cameraStream;$("scanVideo").hidden=false;$("scanPhoto").hidden=true;$("recognize").hidden=true;$("scanStatus").hidden=true;$("takePhoto").hidden=false;await $("scanVideo").play()}catch(err){$("scanStatus").hidden=false;$("scanStatus").textContent="Impossible d'accéder à la caméra. Vérifie les autorisations ou choisis une photo."}
 };
-$("takePhoto").onclick=function(){var v=$("scanVideo"),c=document.createElement("canvas");if(!v.videoWidth)return;c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);$("scanPhoto").src=c.toDataURL("image/jpeg",.8);$("scanPhoto").hidden=false;stopCam();$("scanStatus").hidden=true};
+$("takePhoto").onclick=function(){var v=$("scanVideo"),c=document.createElement("canvas");if(!v.videoWidth)return;c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);$("scanPhoto").src=c.toDataURL("image/jpeg",.8);$("scanPhoto").hidden=false;stopCam();$("scanStatus").hidden=true;photoReady()};
 $("choosePhoto").onclick=function(){$("scanFile").click()};
-$("scanFile").onchange=function(){var f=this.files[0];if(!f)return;if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=URL.createObjectURL(f);stopCam();$("scanPhoto").src=photoUrl;$("scanPhoto").hidden=false;$("scanStatus").hidden=true};
+$("scanFile").onchange=function(){var f=this.files[0];if(!f)return;if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=URL.createObjectURL(f);stopCam();$("scanPhoto").src=photoUrl;$("scanPhoto").hidden=false;$("scanStatus").hidden=true;photoReady()};
 document.addEventListener("visibilitychange",function(){if(document.hidden)stopCam()});
 $("q1").onclick=openImp;
 $("q2").onclick=function(){begin({title:"Sprint",pool:ALL,modes:["cout","nom","effet"],timed:true})};
