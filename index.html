@@ -69,6 +69,16 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 #tabs button{flex:1;font:inherit;font-size:13px;background:none;border:0;color:var(--mut);padding:6px 0;cursor:pointer}
 #tabs button b{display:block;font-size:20px;font-weight:500}
 #tabs button[aria-current="page"]{color:var(--m)}
+ .srch{display:flex;gap:8px;margin:0 0 12px}.srch input{margin:0;flex:1}.srch .chip{white-space:nowrap}
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(2,5,15,.72);display:flex;align-items:flex-end;justify-content:center}
+.sh{width:100%;max-width:480px;max-height:90dvh;overflow:auto;background:var(--s1);border:1px solid var(--line);border-radius:20px 20px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.shh{display:flex;justify-content:space-between;align-items:center}.shh h2{margin:0;font-size:24px}
+.dg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dc{display:flex;flex-direction:column;align-items:center;gap:4px;font:inherit;padding:10px 4px;border:1px solid var(--line);background:var(--s2);color:var(--ink);border-radius:12px;cursor:pointer}
+.dc img{width:46px;height:46px;object-fit:contain}
+.sr{display:flex;justify-content:space-between;align-items:center;width:100%;font:inherit;padding:12px 14px;margin:0 0 8px;border:1px solid var(--line);background:var(--s2);color:var(--ink);border-radius:12px;cursor:pointer}
+.sr i{font-style:normal;color:var(--mut)}
+.dc[aria-pressed="true"],.sr[aria-pressed="true"]{border-color:var(--m);background:#232f78}
 :focus-visible{outline:2px solid var(--m);outline-offset:2px}
 </style>
 </head>
@@ -81,7 +91,7 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 <p class="sub" id="sub">Chargement des cartes…</p>
 <div id="menu" hidden>
 <button class="tile t-quiz" data-go="quiz"><i><img src="icon-deck.png" alt=""></i><div><b>Quiz</b><span>Teste tes connaissances et améliore-toi</span></div></button>
-<button class="tile t-coll" data-go="coll"><i><img src="icon-collection.png" alt=""></i><div><b>Collection</b><span>Gère ta collection, ajoute de nouvelles cartes</span></div></button>
+<button class="tile t-coll" data-go="cmenu"><i><img src="icon-collection.png" alt=""></i><div><b>Collection</b><span>Gère ta collection, ajoute de nouvelles cartes</span></div></button>
 </div>
 <p class="note" id="note"></p>
 </section>
@@ -108,20 +118,24 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 <button class="go alt" id="last" hidden></button>
 <p class="note" id="rep"></p>
 </section>
+<section id="cmenu" hidden>
+<h1>Collection</h1><p class="sub">Ta collection, tes cartes, ton univers.</p>
+<button class="tile t-coll" data-go="coll"><i><img src="icon-collection.png" alt=""></i><div><b>Ma collection</b><span>Consulte et gère les cartes que tu possèdes</span></div></button>
+<button class="tile t-a" data-go="add"><i><img src="icon-add.png" alt=""></i><div><b>Ajouter des cartes</b><span>Ajoute de nouvelles cartes à ta collection</span></div></button>
+</section>
 <section id="coll" hidden>
+<div class="bar"><button class="chip" data-go="cmenu">Retour</button></div>
 <h1>Ma collection</h1>
 <div class="st" id="cst"></div>
-<input type="search" id="f" placeholder="Rechercher une carte…" autocomplete="off">
-<div class="row" id="cft"></div>
+<div class="srch"><input type="search" id="f" placeholder="Rechercher une carte…" autocomplete="off"><button class="chip" id="sortb">Trier par</button></div>
 <div class="grid" id="grid"></div>
-<button class="fab" data-go="add"><img src="icon-add.png" alt="" style="height:26px;vertical-align:-8px;margin-right:6px">Ajouter des cartes</button>
 </section>
 <section id="det" hidden>
 <div class="bar"><button class="chip" data-go="coll">Retour</button></div>
 <div id="detb"></div>
 </section>
 <section id="add" hidden>
-<div class="bar"><button class="chip" data-go="coll">Retour</button></div>
+<div class="bar"><button class="chip" data-go="cmenu">Retour</button></div>
 <h1>Ajouter des cartes</h1>
 <div class="row"><button class="chip" id="mn" aria-pressed="true">Par nom ou code</button><button class="chip" id="ms" aria-pressed="false">Scanner</button></div>
 <div id="pn">
@@ -157,9 +171,10 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 </details>
 </section>
 </main>
+<div class="sheet" id="sheet" hidden><div class="sh" id="shb"></div></div>
 <nav id="tabs" hidden>
 <button data-tab="home"><b>⌂</b>Accueil</button>
-<button data-tab="coll"><b>▣</b>Collection</button>
+<button data-tab="cmenu"><b>▣</b>Collection</button>
 <button data-tab="quiz"><b>⚡</b>Quiz</button>
 <button data-tab="prof"><b>☺</b>Profil</button>
 </nav>
@@ -175,9 +190,9 @@ try{var sv=JSON.parse(localStorage.getItem("rbq3")||"null");if(sv){W=sv.w||{};BE
 function save(){try{localStorage.setItem("rbq3",JSON.stringify({w:W,best:BEST,deck:LASTDECK,mks:MKS}))}catch(e){}}
 function shuf(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
 function tr(s){s=String(s).replace(/\s+/g," ").trim();return s.length>130?s.slice(0,127)+"…":s}
-function slim(x){var c=x.classification||{},a=x.attributes||{};return{id:x.riftbound_id,r:c.rarity||"",n:x.name,num:x.collector_number||0,e:a.energy==null?null:a.energy,t:c.type||"",tx:(x.text||{}).plain||"",img:(x.media||{}).image_url||""}}
+function slim(x){var c=x.classification||{},a=x.attributes||{};return{id:x.riftbound_id,r:c.rarity||"",sp:c.supertype||"",d:[].concat(c.domain||[]),n:x.name,num:x.collector_number||0,e:a.energy==null?null:a.energy,t:c.type||"",tx:(x.text||{}).plain||"",img:(x.media||{}).image_url||""}}
 async function loadAll(){
-try{var ca=JSON.parse(localStorage.getItem("rbcards3")||"null");if(ca&&Date.now()-ca.ts<864e5&&ca.v.length>50)return ca.v}catch(e){}
+try{var ca=JSON.parse(localStorage.getItem("rbcards4")||"null");if(ca&&Date.now()-ca.ts<864e5&&ca.v.length>50)return ca.v}catch(e){}
 var out=[],p=1;
 while(p<60){
 $("sub").textContent="Chargement des cartes… page "+p;
@@ -190,7 +205,7 @@ if(it.length<100)break;p++;
 var best={};
 out.forEach(function(c){if(!c.img||/rune|token/i.test(c.t))return;var b=best[c.n];if(!b||c.num<b.num)best[c.n]=c});
 var v=Object.keys(best).map(function(k){return best[k]});
-try{localStorage.setItem("rbcards3",JSON.stringify({ts:Date.now(),v:v}))}catch(e){}
+try{localStorage.setItem("rbcards4",JSON.stringify({ts:Date.now(),v:v}))}catch(e){}
 return v;
 }
 function parseDeck(txt){
@@ -288,14 +303,17 @@ stat();next();syncCal();
 }
 function syncCal(){if(!G||!G.lay)return;$("cl").textContent="Disposition de cette carte : "+G.lay+". "+(MKS[G.lay]&&MKS[G.lay][$("cm").value]?"Réglé.":"Estimé, à régler.");$("cv").textContent=JSON.stringify(MKS)}
 function menu(){clearInterval(IV);G=null;show("quiz")}
-var INV={},CID={},NOTES={},FT="all",DID=null,CUR="home";
-try{INV=JSON.parse(localStorage.getItem("rbinv1")||"{}")||{};NOTES=JSON.parse(localStorage.getItem("rbnotes1")||"{}")||{}}catch(e){}
-function saveInv(){try{localStorage.setItem("rbinv1",JSON.stringify(INV));localStorage.setItem("rbnotes1",JSON.stringify(NOTES))}catch(e){}}
+var INV={},CID={},NOTES={},ADDED={},DID=null,CUR="home";
+var SORT={dom:[],type:"all",k:"alpha",dir:{rarity:-1,cost:1,alpha:1,date:-1}};
+try{INV=JSON.parse(localStorage.getItem("rbinv1")||"{}")||{};NOTES=JSON.parse(localStorage.getItem("rbnotes1")||"{}")||{};ADDED=JSON.parse(localStorage.getItem("rbadd1")||"{}")||{};var ss=JSON.parse(localStorage.getItem("rbsort1")||"null");if(ss)SORT=ss}catch(e){}
+function saveSort(){try{localStorage.setItem("rbsort1",JSON.stringify(SORT))}catch(e){}}
+function saveInv(){try{localStorage.setItem("rbinv1",JSON.stringify(INV));localStorage.setItem("rbnotes1",JSON.stringify(NOTES));localStorage.setItem("rbadd1",JSON.stringify(ADDED))}catch(e){}}
 function esc(t){return String(t).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
 function code(c){var a=c.id.split("-");return(a[0]+"-"+a[1]).toUpperCase()}
 function curLoc(){return $("loc").value.trim()||"Sans emplacement"}
 function cnt(id){return(INV[id]||[]).reduce(function(a,e){return a+e.n},0)}
 function addCopy(id,loc,d){
+if(!INV[id]&&d>0)ADDED[id]=Date.now();
 var a=INV[id]=INV[id]||[],e=a.filter(function(x){return x.l===loc})[0];
 if(!e){if(d<=0){if(!a.length)delete INV[id];return}e={l:loc,n:0};a.push(e)}
 e.n+=d;if(e.n<=0)a.splice(a.indexOf(e),1);
@@ -306,7 +324,7 @@ var RL={common:"Communes",uncommon:"Peu communes",rare:"Rares",epic:"Épiques",s
 var TY={unit:"Unités",spell:"Sorts",gear:"Équipements",legend:"Légendes",battlefield:"Terrains"};
 function rl(r){var k=String(r||"").toLowerCase();return RL[k]||r||"Autre"}
 function tyk(c){return String(c.t||"").toLowerCase()}
-var TAB={home:"home",quiz:"quiz",imp:"quiz",tgt:"quiz",game:"quiz",coll:"coll",det:"coll",add:"coll",prof:"prof"};
+var TAB={home:"home",quiz:"quiz",imp:"quiz",tgt:"quiz",game:"quiz",cmenu:"cmenu",coll:"cmenu",det:"cmenu",add:"cmenu",prof:"prof"};
 function show(id){
 CUR=id;$("hbg").hidden=id!=="home";Object.keys(TAB).forEach(function(k){$(k).hidden=k!==id});
 [].slice.call(document.querySelectorAll("#tabs button")).forEach(function(b){b.setAttribute("aria-current",b.dataset.tab===TAB[id]?"page":"false")});
@@ -314,16 +332,40 @@ if(id==="coll")renderColl();if(id==="prof")renderProf();if(id==="add")renderRes(
 window.scrollTo(0,0);
 }
 function leave(to){clearInterval(IV);G=null;show(to)}
+var DOMS=[["mind","Mind"],["fury","Fury"],["chaos","Chaos"],["calm","Calm"],["order","Order"],["body","Body"]];
+var TYPES=[["all","Toutes"],["champion","Champions"],["spell","Sorts"],["battlefield","Lieux"]];
+var SK=[["rarity","Rareté"],["cost","Coût"],["alpha","Ordre alphabétique"],["date","Date d’ajout"]];
+function rk(c){var o=["common","uncommon","rare","epic","showcase","overnumbered"].indexOf(String(c.r||"").toLowerCase());return o<0?9:o}
+function doms(c){return(c.d||[]).map(function(x){return String(x).toLowerCase()})}
+function cmp(a,b){
+var A=CID[a],B=CID[b],k=SORT.k,v;
+if(k==="cost")v=(A.e==null?99:A.e)-(B.e==null?99:B.e);
+else if(k==="rarity")v=rk(A)-rk(B);
+else if(k==="date")v=(ADDED[a]||0)-(ADDED[b]||0);
+else v=A.n.localeCompare(B.n);
+if(!v)v=A.n.localeCompare(B.n);
+return v*SORT.dir[k];
+}
 function renderColl(){
-var ids=Object.keys(INV).filter(function(id){return CID[id]}),tot=0,rar={},types={};
-ids.forEach(function(id){var n=cnt(id);tot+=n;var k=rl(CID[id].r);rar[k]=(rar[k]||0)+n;types[tyk(CID[id])]=1});
+var ids=Object.keys(INV).filter(function(id){return CID[id]}),tot=0,rar={};
+ids.forEach(function(id){var n=cnt(id);tot+=n;var k=rl(CID[id].r);rar[k]=(rar[k]||0)+n});
 var h='<div><b>'+tot+'</b><span>Total</span></div>';
 Object.keys(rar).sort(function(a,b){return rar[b]-rar[a]}).slice(0,4).forEach(function(k){h+='<div><b>'+rar[k]+'</b><span>'+esc(k)+'</span></div>'});
 $("cst").innerHTML=h;
-$("cft").innerHTML='<button class="chip" data-ft="all" aria-pressed="'+(FT==="all")+'">Toutes</button>'+Object.keys(types).map(function(k){return'<button class="chip" data-ft="'+esc(k)+'" aria-pressed="'+(FT===k)+'">'+esc(TY[k]||k)+'</button>'}).join("");
 var f=norm($("f").value);
-var list=ids.filter(function(id){var c=CID[id];if(FT!=="all"&&tyk(c)!==FT)return false;return!f||norm(c.n).indexOf(f)>=0||code(c).toLowerCase().indexOf(f)>=0||INV[id].some(function(e){return norm(e.l).indexOf(f)>=0})}).sort(function(a,b){return CID[a].n.localeCompare(CID[b].n)});
-$("grid").innerHTML=list.map(function(id){return'<button class="gc" data-det="'+esc(id)+'" aria-label="'+esc(CID[id].n)+'"><img alt="" loading="lazy" referrerpolicy="no-referrer" src="'+esc(CID[id].img)+'"><span>×'+cnt(id)+'</span></button>'}).join("")||'<p class="note" style="grid-column:1/-1">Aucune carte pour le moment. Ajoute-en avec le bouton ci-dessous.</p>';
+var list=ids.filter(function(id){
+var c=CID[id];
+if(SORT.dom.length&&!doms(c).some(function(d){return SORT.dom.indexOf(d)>=0}))return false;
+if(SORT.type==="champion"&&!/champion/i.test(c.sp||""))return false;
+if(SORT.type==="spell"&&tyk(c)!=="spell")return false;
+if(SORT.type==="battlefield"&&tyk(c)!=="battlefield")return false;
+return!f||norm(c.n).indexOf(f)>=0||code(c).toLowerCase().indexOf(f)>=0||INV[id].some(function(e){return norm(e.l).indexOf(f)>=0});
+}).sort(cmp);
+$("sortb").textContent="Trier par"+(SORT.dom.length||SORT.type!=="all"?" •":"");
+$("grid").innerHTML=list.map(function(id){return'<button class="gc" data-det="'+esc(id)+'" aria-label="'+esc(CID[id].n)+'"><img alt="" loading="lazy" referrerpolicy="no-referrer" src="'+esc(CID[id].img)+'"><span>×'+cnt(id)+'</span></button>'}).join("")||'<p class="note" style="grid-column:1/-1">Aucune carte à afficher. Ajoute des cartes ou change les filtres.</p>';
+}
+function renderSheet(){
+$("shb").innerHTML='<div class="shh"><h2>Trier par</h2><button class="chip" data-sh="1" aria-label="Fermer">✕</button></div><h3>Couleur</h3><div class="dg">'+DOMS.map(function(d){var on=SORT.dom.indexOf(d[0])>=0;return'<button class="dc" data-dom="'+d[0]+'" aria-pressed="'+on+'"><img src="dom-'+d[0]+'.png" alt="">'+d[1]+(on?" ✓":"")+'</button>'}).join("")+'</div><h3>Type de carte</h3>'+TYPES.map(function(t){var on=SORT.type===t[0];return'<button class="sr" data-ty="'+t[0]+'" aria-pressed="'+on+'"><span>'+t[1]+'</span>'+(on?"<b>✓</b>":"")+'</button>'}).join("")+'<h3>Autres tris</h3>'+SK.map(function(x){var on=SORT.k===x[0];return'<button class="sr" data-sk="'+x[0]+'" aria-pressed="'+on+'"><span>'+x[1]+'</span><i>'+(SORT.dir[x[0]]>0?"Croissant":"Décroissant")+' ›</i></button>'}).join("");
 }
 function renderDet(){
 var c=CID[DID];if(!c)return;
@@ -348,6 +390,7 @@ show("imp");$("rep").textContent="";$("last").hidden=true;
 if(LASTDECK&&LASTDECK.length){var n=LASTDECK.map(function(id){return CID[id]}).filter(Boolean);if(n.length){$("last").hidden=false;$("last").textContent="Reprendre mon dernier deck ("+n.length+" cartes)";$("last").onclick=function(){begin({title:"Mon deck",pool:n,modes:["cout","nom","effet"]})}}}
 }
 document.addEventListener("click",function(e){
+if(e.target.id==="sheet"){$("sheet").hidden=true;return}
 var b=e.target.closest("button");if(!b)return;
 var d=b.dataset;
 if(d.tab)leave(d.tab);
@@ -357,7 +400,10 @@ else if(d.t3)begin({title:{cout:"Coûts",effet:"Effets",nom:"Noms"}[d.t3],pool:A
 else if(d.i!==undefined)answer(+d.i);
 else if(b.id==="go")next();
 else if(d.det){DID=d.det;show("det");renderDet()}
-else if(d.ft){FT=d.ft;renderColl()}
+else if(d.sh)$("sheet").hidden=true;
+else if(d.dom){var i=SORT.dom.indexOf(d.dom);if(i<0)SORT.dom.push(d.dom);else SORT.dom.splice(i,1);saveSort();renderSheet();renderColl()}
+else if(d.ty){SORT.type=d.ty;saveSort();renderSheet();renderColl()}
+else if(d.sk){if(SORT.k===d.sk)SORT.dir[d.sk]*=-1;else SORT.k=d.sk;saveSort();renderSheet();renderColl()}
 else if(d.add){var loc=curLoc();addCopy(d.add,loc,1);$("imsg").textContent="Ajouté : "+CID[d.add].n+", "+loc+" (×"+INV[d.add].filter(function(x){return x.l===loc})[0].n+")";$("imsg").style.color="var(--ok)"}
 else if(d.pm){addCopy(d.id,d.loc,+d.pm);refresh()}
 });
@@ -370,6 +416,7 @@ $("cm").addEventListener("change",function(){syncCal();draw()});
 $("cal").addEventListener("toggle",function(){syncCal();draw()});
 $("q").addEventListener("input",renderRes);
 $("f").addEventListener("input",renderColl);
+$("sortb").onclick=function(){renderSheet();$("sheet").hidden=false};
 $("mn").onclick=function(){$("pn").hidden=false;$("ps").hidden=true;$("mn").setAttribute("aria-pressed","true");$("ms").setAttribute("aria-pressed","false")};
 $("ms").onclick=function(){$("pn").hidden=true;$("ps").hidden=false;$("ms").setAttribute("aria-pressed","true");$("mn").setAttribute("aria-pressed","false")};
 $("q1").onclick=openImp;
@@ -382,7 +429,7 @@ LASTDECK=r.cards.map(function(c){return c.id});save();
 if(r.miss.length&&!confirm(r.cards.length+" cartes reconnues. Non reconnues : "+r.miss.slice(0,8).join(" ; ")+(r.miss.length>8?" …":"")+". Continuer ?"))return;
 begin({title:"Mon deck",pool:r.cards,modes:["cout","nom","effet"]});
 };
-$("xj").onclick=function(){dl("collection-riftbound.json","application/json",JSON.stringify({version:1,inv:INV,notes:NOTES}))};
+$("xj").onclick=function(){dl("collection-riftbound.json","application/json",JSON.stringify({version:1,inv:INV,notes:NOTES,added:ADDED}))};
 $("xc").onclick=function(){
 var rows=["Code;Nom;Emplacement;Quantité"];
 Object.keys(INV).forEach(function(id){var c=CID[id];if(!c)return;INV[id].forEach(function(e){rows.push([code(c),'"'+c.n.replace(/"/g,'""')+'"','"'+e.l.replace(/"/g,'""')+'"',e.n].join(";"))})});
@@ -394,7 +441,7 @@ var f=this.files[0];if(!f)return;
 var r=new FileReader();
 r.onload=function(){
 try{var j=JSON.parse(r.result);if(!j||!j.inv)throw new Error("format");
-if(confirm("Remplacer ta collection actuelle par cette sauvegarde ?")){INV=j.inv;NOTES=j.notes||{};saveInv();renderProf();$("pmsg").textContent="Sauvegarde importée.";$("pmsg").style.color="var(--ok)"}}
+if(confirm("Remplacer ta collection actuelle par cette sauvegarde ?")){INV=j.inv;NOTES=j.notes||{};ADDED=j.added||{};saveInv();renderProf();$("pmsg").textContent="Sauvegarde importée.";$("pmsg").style.color="var(--ok)"}}
 catch(err){$("pmsg").textContent="Fichier non reconnu.";$("pmsg").style.color="var(--ko)"}
 };
 r.readAsText(f);this.value="";
