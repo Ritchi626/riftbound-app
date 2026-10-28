@@ -80,6 +80,25 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 .sr i{font-style:normal;color:var(--mut)}
 .dc[aria-pressed="true"],.sr[aria-pressed="true"]{border-color:var(--m);background:#232f78}
 :focus-visible{outline:2px solid var(--m);outline-offset:2px}
+
+/* Ajouter des cartes — interface Rift Vault */
+.add-head{display:flex;align-items:center;gap:12px;margin:2px 0 22px}.add-head h1{font-size:23px;margin:0}.back-icon{border:0;background:none;color:var(--ink);font-size:30px;line-height:1;cursor:pointer;padding:0 4px}
+.add-switch{display:grid;grid-template-columns:1fr 1fr;padding:3px;border:1px solid #1b416a;background:#091a33;border-radius:30px;margin-bottom:24px}
+.add-switch button{border:0;background:transparent;color:#b5c6e9;border-radius:25px;font:inherit;padding:10px 6px;cursor:pointer}
+.add-switch button[aria-pressed=true]{background:linear-gradient(120deg,#3858fa,#6475ff);color:white;font-weight:700;box-shadow:0 3px 12px #2638a855}
+.add-search{display:flex;align-items:center;gap:10px;background:#102442;border:1px solid #345a88;border-radius:16px;padding:0 14px;margin-bottom:18px}
+.add-search svg{flex:none;color:#e3eeff}.add-search input{margin:0;border:0;background:transparent;min-width:0;padding:16px 0;outline:none;font-size:15px}
+.add-search input:focus-visible{outline:none}.add-search:focus-within{border-color:#668bff;box-shadow:0 0 0 2px #6274ff33}
+.add-divider{display:flex;align-items:center;gap:12px;color:#aebfe0;font-size:13px;margin:22px 0}.add-divider:before,.add-divider:after{content:'';height:1px;flex:1;background:#294366}
+.scan-tile{width:100%;min-height:210px;border:1.5px dashed #00a9eb;border-radius:16px;background:linear-gradient(155deg,#061a32,#071327);color:#f1f6ff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;cursor:pointer;text-align:center;font:inherit}
+.scan-tile strong{font-size:20px}.scan-tile small{font-size:14px;color:#a7bfe1;max-width:240px}.camera-mark{display:grid;place-items:center;width:62px;height:62px;border:1px solid #135389;background:#082a50;border-radius:16px;color:white}
+.add-hint{display:flex;gap:14px;margin:24px 4px;color:#a8bce0}.add-hint b{color:#e5edff;font-size:18px}.add-hint p{margin:4px 0 0;font-size:14px}.add-hint .bolt{color:#7569ff;font-size:28px}
+.add-info{border:1px solid #214e80;border-radius:15px;background:#09213e;color:#afc7ea;padding:14px;font-size:14px;margin-top:16px}
+.add-location{margin:14px 0 8px}.add-location summary{color:#a9c0e4;cursor:pointer}.add-location input{margin-top:10px}
+.scan-stage{position:relative;min-height:290px;background:#071529;border:1px solid #28527e;border-radius:16px;overflow:hidden;display:grid;place-items:center;margin:12px 0}
+.scan-stage video,.scan-stage img{width:100%;height:100%;object-fit:contain;max-height:65vh}.scan-corners{position:absolute;inset:12%;border:2px dashed #7181ff;border-radius:15px;pointer-events:none}
+.scan-actions{display:flex;gap:10px}.scan-actions button{flex:1}.scan-note{color:#aec1e0;font-size:14px}
+@media(min-width:600px){.scan-tile{min-height:245px}}
 </style>
 </head>
 <body>
@@ -135,16 +154,25 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 <div id="detb"></div>
 </section>
 <section id="add" hidden>
-<div class="bar"><button class="chip" data-go="cmenu">Retour</button></div>
-<h1>Ajouter des cartes</h1>
-<div class="row"><button class="chip" id="mn" aria-pressed="true">Par nom ou code</button><button class="chip" id="ms" aria-pressed="false">Scanner</button></div>
+<div class="add-head"><button class="back-icon" data-go="cmenu" aria-label="Retour">←</button><h1>Ajouter des cartes</h1></div>
+<div class="add-switch"><button id="mn" aria-pressed="true">Par nom / code</button><button id="ms" aria-pressed="false">Scanner</button></div>
 <div id="pn">
-<input type="text" id="loc" list="locs" placeholder="Emplacement (ex. Boîte 1, Fury)" autocomplete="off"><datalist id="locs"></datalist>
-<input type="search" id="q" placeholder="Nom ou code de la carte (ex. Vayne, ogn-035)" autocomplete="off">
-<div class="fb" id="imsg" aria-live="polite"></div>
-<div id="res"></div>
+<label class="add-search"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><input type="search" id="q" placeholder="Nom ou code de la carte (#xxx/xxx)" autocomplete="off" aria-label="Nom ou code de la carte"></label>
+<div class="add-divider">OU</div>
+<button class="scan-tile" id="scanLaunch"><span class="camera-mark"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/></svg></span><strong>Scanner une carte</strong><small>Utilise l'appareil photo pour retrouver une carte et l'ajouter à ta collection.</small></button>
+<div class="add-hint"><span class="bolt">ϟ</span><div><b>Ajout rapide</b><p>Recherche une carte, puis touche son résultat pour l'ajouter directement.</p></div></div>
+<div class="add-info">ⓘ La reconnaissance automatique par photo n'est pas encore disponible. La caméra permet de voir ou photographier une carte, puis de saisir son nom ou son code.</div>
+<details class="add-location"><summary>Choisir un emplacement (facultatif)</summary><input type="text" id="loc" list="locs" placeholder="Ex. Boîte 1, Fury" autocomplete="off"><datalist id="locs"></datalist></details>
+<div class="fb" id="imsg" aria-live="polite"></div><div id="res"></div>
 </div>
-<div class="end" id="ps" hidden><h2>Scanner</h2><p>Le scan par caméra n’est pas encore disponible. En attendant, la recherche par nom ou par code est la méthode la plus rapide.</p></div>
+<div id="ps" hidden>
+<p class="scan-note">Place la carte dans le cadre. Tu peux ensuite rechercher son nom ou son code pour l'ajouter.</p>
+<div class="scan-stage"><video id="scanVideo" autoplay playsinline muted hidden></video><img id="scanPhoto" alt="Photo de la carte" hidden><div class="scan-corners" aria-hidden="true"></div><p id="scanStatus" class="scan-note" style="padding:20px;text-align:center">Caméra non démarrée</p></div>
+<div class="scan-actions"><button class="go" id="startCam">Activer la caméra</button><button class="go alt" id="takePhoto" hidden>Prendre une photo</button></div>
+<input id="scanFile" type="file" accept="image/*" capture="environment" hidden><button class="go alt" id="choosePhoto">Prendre / choisir une photo</button>
+<button class="go alt" id="manualSearch">Rechercher par nom / code</button>
+<p class="scan-note">La photo reste sur cet appareil et n'est pas envoyée à un service de reconnaissance.</p>
+</div>
 </section>
 <section id="prof" hidden>
 <h1>Profil</h1>
@@ -326,6 +354,7 @@ function rl(r){var k=String(r||"").toLowerCase();return RL[k]||r||"Autre"}
 function tyk(c){return String(c.t||"").toLowerCase()}
 var TAB={home:"home",quiz:"quiz",imp:"quiz",tgt:"quiz",game:"quiz",cmenu:"cmenu",coll:"cmenu",det:"cmenu",add:"cmenu",prof:"prof"};
 function show(id){
+if(id!=="add"&&typeof stopCam==="function")stopCam();
 CUR=id;$("hbg").hidden=id!=="home";Object.keys(TAB).forEach(function(k){$(k).hidden=k!==id});
 [].slice.call(document.querySelectorAll("#tabs button")).forEach(function(b){b.setAttribute("aria-current",b.dataset.tab===TAB[id]?"page":"false")});
 if(id==="coll")renderColl();if(id==="prof")renderProf();if(id==="add")renderRes();
@@ -417,8 +446,21 @@ $("cal").addEventListener("toggle",function(){syncCal();draw()});
 $("q").addEventListener("input",renderRes);
 $("f").addEventListener("input",renderColl);
 $("sortb").onclick=function(){renderSheet();$("sheet").hidden=false};
-$("mn").onclick=function(){$("pn").hidden=false;$("ps").hidden=true;$("mn").setAttribute("aria-pressed","true");$("ms").setAttribute("aria-pressed","false")};
-$("ms").onclick=function(){$("pn").hidden=true;$("ps").hidden=false;$("ms").setAttribute("aria-pressed","true");$("mn").setAttribute("aria-pressed","false")};
+var cameraStream=null,photoUrl=null;
+function stopCam(){if(cameraStream){cameraStream.getTracks().forEach(function(t){t.stop()});cameraStream=null}$("scanVideo").srcObject=null;$("scanVideo").hidden=true;$("takePhoto").hidden=true}
+function addMode(scan){if(!scan)stopCam();$("pn").hidden=scan;$("ps").hidden=!scan;$("mn").setAttribute("aria-pressed",String(!scan));$("ms").setAttribute("aria-pressed",String(scan))}
+$("mn").onclick=function(){addMode(false)};
+$("ms").onclick=function(){addMode(true)};
+$("scanLaunch").onclick=function(){addMode(true)};
+$("manualSearch").onclick=function(){addMode(false);$("q").focus()};
+$("startCam").onclick=async function(){
+if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$("scanStatus").textContent="Caméra indisponible ici. Essaie en HTTPS ou utilise le bouton photo.";return}
+try{stopCam();cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});$("scanVideo").srcObject=cameraStream;$("scanVideo").hidden=false;$("scanPhoto").hidden=true;$("scanStatus").hidden=true;$("takePhoto").hidden=false;await $("scanVideo").play()}catch(err){$("scanStatus").hidden=false;$("scanStatus").textContent="Impossible d'accéder à la caméra. Vérifie les autorisations ou choisis une photo."}
+};
+$("takePhoto").onclick=function(){var v=$("scanVideo"),c=document.createElement("canvas");if(!v.videoWidth)return;c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);$("scanPhoto").src=c.toDataURL("image/jpeg",.8);$("scanPhoto").hidden=false;stopCam();$("scanStatus").hidden=true};
+$("choosePhoto").onclick=function(){$("scanFile").click()};
+$("scanFile").onchange=function(){var f=this.files[0];if(!f)return;if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=URL.createObjectURL(f);stopCam();$("scanPhoto").src=photoUrl;$("scanPhoto").hidden=false;$("scanStatus").hidden=true};
+document.addEventListener("visibilitychange",function(){if(document.hidden)stopCam()});
 $("q1").onclick=openImp;
 $("q2").onclick=function(){begin({title:"Sprint",pool:ALL,modes:["cout","nom","effet"],timed:true})};
 $("preset").onclick=function(){begin({title:"Deck Ekko",pool:byNames(DECK),modes:["cout","nom","effet"]})};
