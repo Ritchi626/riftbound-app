@@ -98,6 +98,12 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 .scan-stage{position:relative;min-height:290px;background:#071529;border:1px solid #28527e;border-radius:16px;overflow:hidden;display:grid;place-items:center;margin:12px 0}
 .scan-stage video,.scan-stage img{width:100%;height:100%;object-fit:contain;max-height:65vh}.scan-corners{position:absolute;inset:12%;border:2px dashed #7181ff;border-radius:15px;pointer-events:none}
 .scan-actions{display:flex;gap:10px}.scan-actions button{flex:1}.scan-note{color:#aec1e0;font-size:14px}
+/* Recherche mobile : afficher immédiatement les résultats, sans bloc de scan. */
+#pn{min-width:0}#pn .add-search{margin-bottom:10px}#pn #res{display:grid;gap:8px;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+#pn #res .rs{min-height:82px;display:flex;align-items:center;gap:12px;text-align:left;width:100%;padding:8px 10px}
+#pn #res .rs img{width:48px;height:66px;object-fit:contain;flex-shrink:0}
+#pn #res .rs span{min-width:0}#pn #res .rs b{display:block;overflow-wrap:anywhere}#pn #res .rs i{display:block;margin-top:4px}
+@media(max-width:600px){#add{padding-bottom:90px}.add-head{margin-bottom:12px}.add-switch{margin-bottom:14px}.add-info{font-size:12px;padding:10px}.add-location{margin:8px 0}}
 /* Scanner mobile : priorité à la prévisualisation et au résultat */
 #ps{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 .scan-stage{height:clamp(220px,42dvh,390px);min-height:0;margin:10px 0 12px;display:flex;align-items:center;justify-content:center}
@@ -176,14 +182,12 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 <div class="add-switch"><button id="mn" aria-pressed="true">Par nom / code</button><button id="ms" aria-pressed="false">Scanner</button></div>
 <div id="pn">
 <label class="add-search"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><input type="search" id="q" placeholder="Nom ou code de la carte (#xxx/xxx)" autocomplete="off" aria-label="Nom ou code de la carte"></label>
-<div class="add-divider">OU</div>
-<button class="scan-tile" id="scanLaunch"><span class="camera-mark"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/></svg></span><strong>Scanner une carte</strong><small>Utilise l'appareil photo pour retrouver une carte et l'ajouter à ta collection.</small></button>
-<div class="add-hint"><span class="bolt">ϟ</span><div><b>Ajout rapide</b><p>Recherche une carte, puis touche son résultat pour l'ajouter directement.</p></div></div>
-<div class="add-info">ⓘ La reconnaissance automatique est disponible dans l’onglet Scanner. Les cartes foil peuvent demander un éclairage sans reflet.</div>
+<p class="add-info" style="margin:0 0 12px">Saisis au moins deux caractères pour afficher les cartes. Tu peux aussi chercher par code, par exemple RAD-001.</p>
+<div class="fb" id="imsg" aria-live="polite"></div><div id="res" aria-live="polite"></div>
 <details class="add-location"><summary>Choisir un emplacement (facultatif)</summary><input type="text" id="loc" list="locs" placeholder="Ex. Boîte 1, Fury" autocomplete="off"><datalist id="locs"></datalist></details>
-<div class="fb" id="imsg" aria-live="polite"></div><div id="res"></div>
 </div>
 <div id="ps" hidden>
+<p class="scan-note">Pour scanner une carte, active la caméra ci-dessous.</p>
 <p class="scan-note">Place la carte dans le cadre. Pour les cartes foil, évite les reflets en inclinant légèrement la carte. Pour les terrains (Battlefields), essaie aussi en paysage.</p>
 <div class="scan-stage"><video id="scanVideo" autoplay playsinline muted hidden></video><img id="scanPhoto" alt="Photo de la carte" hidden><div class="scan-corners" aria-hidden="true"></div><p id="scanStatus" class="scan-note" style="padding:20px;text-align:center">Caméra non démarrée</p></div>
 <div class="scan-actions"><button class="go" id="startCam">Activer la caméra</button><button class="go alt" id="takePhoto" hidden>Prendre une photo</button></div><p class="scan-tip">Astuce : si le scan hésite, prends une photo nette. Le nom de la carte est analysé en priorité.</p>
@@ -238,22 +242,49 @@ function save(){try{localStorage.setItem("rbq3",JSON.stringify({w:W,best:BEST,de
 function shuf(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
 function tr(s){s=String(s).replace(/\s+/g," ").trim();return s.length>130?s.slice(0,127)+"…":s}
 function slim(x){var c=x.classification||{},a=x.attributes||{};return{id:x.riftbound_id,r:c.rarity||"",sp:c.supertype||"",d:[].concat(c.domain||[]),n:x.name,num:x.collector_number||0,e:a.energy==null?null:a.energy,t:c.type||"",tx:(x.text||{}).plain||"",img:(x.media||{}).image_url||""}}
-async function loadAll(){
-try{var ca=JSON.parse(localStorage.getItem("rbcards4")||"null");if(ca&&Date.now()-ca.ts<864e5&&ca.v.length>50)return ca.v}catch(e){}
-var out=[],p=1;
-while(p<60){
-$("sub").textContent="Chargement des cartes… page "+p;
-var r=await fetch(API+"/cards?size=100&page="+p);
-if(!r.ok)throw new Error("HTTP "+r.status);
-var j=await r.json(),it=j.items||[];
-it.forEach(function(x){out.push(slim(x))});
-if(it.length<100)break;p++;
+/* Catalogue : conserver chaque impression et chaque set (pas de dédoublonnage par nom). */
+function catalogUnique(cards){
+ var seen=new Set();return cards.filter(function(c){if(!c||!c.id||!c.n||seen.has(c.id))return false;seen.add(c.id);return true});
 }
-var best={};
-out.forEach(function(c){if(!c.img||/rune|token/i.test(c.t))return;var b=best[c.n];if(!b||c.num<b.num)best[c.n]=c});
-var v=Object.keys(best).map(function(k){return best[k]});
-try{localStorage.setItem("rbcards4",JSON.stringify({ts:Date.now(),v:v}))}catch(e){}
-return v;
+async function loadRiftcodex(){
+ var out=[],p=1;
+ while(p<=80){
+  $("sub").textContent="Mise à jour des cartes… page "+p;
+  var r=await fetch(API+"/cards?size=100&page="+p);
+  if(!r.ok)throw new Error("Riftcodex HTTP "+r.status);
+  var j=await r.json(),it=j.items||[];
+  it.forEach(function(x){var c=slim(x);if(c.id&&c.n)out.push(c)});
+  if(it.length<100)break;p++;
+ }
+ return catalogUnique(out);
+}
+/* Complément depuis la galerie officielle Riot, utile quand une extension vient de sortir. */
+async function loadRiotGallery(){
+ var url="https://content.publishing.riotgames.com/publishing-content/v2.0/public/channel/riftbound_website/list/riftbound_gallery_cards?locale=en_US&from=0&limit=2000";
+ var r=await fetch(url);if(!r.ok)throw new Error("Galerie Riot HTTP "+r.status);
+ var j=await r.json(),rows=Array.isArray(j.data)?j.data:[];
+ return catalogUnique(rows.map(function(x){
+  var classification=x.cardType||{},rar=x.rarity&&x.rarity.value||{},domain=x.domain&&x.domain.values||[];
+  var id=String(x.id||"").toLowerCase();
+  var kind=(classification.type||[])[0]||{},supertype=(classification.superType||[])[0]||{};
+  var cardName=[x.name,x.subtitle].filter(Boolean).join(", ");
+  var num=Number(x.collectorNumber)||0;
+  var energy=x.energy!=null?x.energy:(x.stats&&x.stats.energy);
+  var img=x.cardImage&&x.cardImage.url||"";
+  return {id:id,n:cardName||x.name||"",num:num,r:rar.id||"",sp:supertype.id||"",d:domain.map(function(d){return d.id}),t:kind.id||"",e:energy==null?null:Number(energy),tx:x.rulesText||"",img:img};
+ }));
+}
+async function loadAll(){
+ var cached=null;
+ try{cached=JSON.parse(localStorage.getItem("rbcards5")||"null");if(cached&&Date.now()-cached.ts<6*3600e3&&cached.v.length>100)return cached.v}catch(e){}
+ var sources=await Promise.allSettled([loadRiftcodex(),loadRiotGallery()]);
+ var cards=[];
+ sources.forEach(function(result){if(result.status==="fulfilled")cards=cards.concat(result.value)});
+ cards=catalogUnique(cards);
+ if(!cards.length){if(cached&&cached.v.length)return cached.v;throw new Error("Aucune source de cartes accessible. Vérifie ta connexion.")}
+ /* Priorité à Riftcodex pour préserver les identifiants de la collection existante. */
+ try{localStorage.setItem("rbcards5",JSON.stringify({ts:Date.now(),v:cards}))}catch(e){}
+ return cards;
 }
 function parseDeck(txt){
 var found={},miss=[];
@@ -423,12 +454,19 @@ $("dn").textContent=c.n;$("dtx").textContent=c.tx||"";$("dnote").value=NOTES[DID
 $("dnote").oninput=function(){if(this.value)NOTES[DID]=this.value;else delete NOTES[DID];saveInv()};
 }
 function renderRes(){
-var q=norm($("q").value),r=[];
-if(q.length>=2)r=ALL.filter(function(c){return norm(c.n).indexOf(q)>=0||code(c).toLowerCase().indexOf(q)>=0}).slice(0,8);
-$("res").innerHTML=r.map(function(c){return'<button class="rs" data-add="'+esc(c.id)+'"><img alt="" referrerpolicy="no-referrer" src="'+esc(c.img)+'"><span><b></b><i>'+code(c)+'</i></span></button>'}).join("");
-[].slice.call($("res").querySelectorAll("b")).forEach(function(b,i){b.textContent=r[i].n});
-var L={};Object.keys(INV).forEach(function(id){INV[id].forEach(function(e){L[e.l]=1})});
-$("locs").innerHTML=Object.keys(L).map(function(l){return'<option value="'+esc(l)+'">'}).join("");
+ var q=norm($("q").value),r=[];
+ if(q.length>=2){
+  r=ALL.filter(function(c){return norm(c.n).includes(q)||code(c).toLowerCase().includes(q)})
+   .sort(function(a,b){
+    function rank(c){var n=norm(c.n),k=code(c).toLowerCase();return k===q?0:n===q?1:k.startsWith(q)?2:n.startsWith(q)?3:4}
+    return rank(a)-rank(b)||a.n.localeCompare(b.n)||code(a).localeCompare(code(b));
+   }).slice(0,30);
+ }
+ $("res").innerHTML=r.map(function(c){return'<button class="rs" data-add="'+esc(c.id)+'"><img alt="" loading="lazy" referrerpolicy="no-referrer" src="'+esc(c.img)+'"><span><b></b><i>'+esc(code(c))+' · '+esc(c.r||'')+'</i></span></button>'}).join("");
+ [].slice.call($("res").querySelectorAll("b")).forEach(function(b,i){b.textContent=r[i].n});
+ if(q.length>=2&&!r.length)$("res").innerHTML='<p class="note">Aucune carte trouvée. Vérifie le nom ou le code, ou réessaie après une mise à jour du catalogue.</p>';
+ var L={};Object.keys(INV).forEach(function(id){INV[id].forEach(function(e){L[e.l]=1})});
+ $("locs").innerHTML=Object.keys(L).map(function(l){return'<option value="'+esc(l)+'">'}).join("");
 }
 function renderProf(){var t=0,r=0;Object.keys(INV).forEach(function(k){r++;t+=cnt(k)});$("pst").textContent=t+" cartes ("+r+" références) · meilleur score au sprint : "+BEST}
 function refresh(){if(CUR==="det")renderDet();else if(CUR==="coll")renderColl()}
@@ -528,7 +566,7 @@ function stopCam(){stopAutoOCR();if(cameraStream){cameraStream.getTracks().forEa
 function addMode(scan){if(!scan)stopCam();$("pn").hidden=scan;$("ps").hidden=!scan;$("mn").setAttribute("aria-pressed",String(!scan));$("ms").setAttribute("aria-pressed",String(scan))}
 $("mn").onclick=function(){addMode(false)};
 $("ms").onclick=function(){addMode(true)};
-$("scanLaunch").onclick=function(){addMode(true)};
+
 $("manualSearch").onclick=function(){addMode(false);$("q").focus()};
 $("startCam").onclick=async function(){
 if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$("scanStatus").textContent="Caméra indisponible ici. Essaie en HTTPS ou utilise le bouton photo.";return}
@@ -567,9 +605,9 @@ r.readAsText(f);this.value="";
 });
 (async function(){
 try{
-ALL=await loadAll();ALL.forEach(function(c){BYN[norm(c.n)]=c;CID[c.id]=c});
-$("sub").textContent=ALL.length+" cartes chargées";$("menu").hidden=false;$("tabs").hidden=false;
-$("note").textContent="Données : Riftcodex (projet de fan, non affilié à Riot Games). Images : Riot Games.";
+ALL=await loadAll();ALL.forEach(function(c){if(!BYN[norm(c.n)])BYN[norm(c.n)]=c;CID[c.id]=c});
+var setCounts={};ALL.forEach(function(c){var set=c.id.split("-")[0].toUpperCase();setCounts[set]=(setCounts[set]||0)+1});$("sub").textContent=ALL.length+" cartes chargées · "+Object.keys(setCounts).sort().map(function(k){return k+" : "+setCounts[k]}).join(" · ");$("menu").hidden=false;$("tabs").hidden=false;
+$("note").textContent="Données : Riftcodex et galerie officielle Riot Games. Catalogue mis en cache 6 h ; connexion requise pour les mises à jour.";
 }catch(err){
 $("sub").textContent="Impossible de charger les cartes.";
 $("note").textContent="Détail technique à me transmettre : "+err.message;
