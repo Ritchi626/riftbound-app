@@ -382,8 +382,8 @@ stat();next();syncCal();
 function syncCal(){if(!G||!G.lay)return;$("cl").textContent="Disposition de cette carte : "+G.lay+". "+(MKS[G.lay]&&MKS[G.lay][$("cm").value]?"Réglé.":"Estimé, à régler.");$("cv").textContent=JSON.stringify(MKS)}
 function menu(){clearInterval(IV);G=null;show("quiz")}
 var INV={},CID={},NOTES={},ADDED={},DID=null,CUR="home";
-var SORT={dom:[],type:"all",k:"alpha",dir:{rarity:-1,cost:1,alpha:1,date:-1}};
-try{INV=JSON.parse(localStorage.getItem("rbinv1")||"{}")||{};NOTES=JSON.parse(localStorage.getItem("rbnotes1")||"{}")||{};ADDED=JSON.parse(localStorage.getItem("rbadd1")||"{}")||{};var ss=JSON.parse(localStorage.getItem("rbsort1")||"null");if(ss)SORT=ss}catch(e){}
+var SORT={dom:[],type:"all",set:"all",k:"alpha",dir:{rarity:-1,cost:1,alpha:1,date:-1,set:1}};
+try{INV=JSON.parse(localStorage.getItem("rbinv1")||"{}")||{};NOTES=JSON.parse(localStorage.getItem("rbnotes1")||"{}")||{};ADDED=JSON.parse(localStorage.getItem("rbadd1")||"{}")||{};var ss=JSON.parse(localStorage.getItem("rbsort1")||"null");if(ss)SORT=ss;if(!SORT.dir)SORT.dir={};if(!SORT.dir.set)SORT.dir.set=1;if(!SORT.set)SORT.set="all"}catch(e){}
 function saveSort(){try{localStorage.setItem("rbsort1",JSON.stringify(SORT))}catch(e){}}
 function saveInv(){try{localStorage.setItem("rbinv1",JSON.stringify(INV));localStorage.setItem("rbnotes1",JSON.stringify(NOTES));localStorage.setItem("rbadd1",JSON.stringify(ADDED))}catch(e){}}
 function esc(t){return String(t).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
@@ -413,12 +413,17 @@ window.scrollTo(0,0);
 function leave(to){clearInterval(IV);G=null;show(to)}
 var DOMS=[["mind","Mind"],["fury","Fury"],["chaos","Chaos"],["calm","Calm"],["order","Order"],["body","Body"]];
 var TYPES=[["all","Toutes"],["champion","Champions"],["spell","Sorts"],["battlefield","Lieux"]];
-var SK=[["rarity","Rareté"],["cost","Coût"],["alpha","Ordre alphabétique"],["date","Date d’ajout"]];
+var SK=[["rarity","Rareté"],["cost","Coût"],["alpha","Ordre alphabétique"],["date","Date d’ajout"],["set","Set (extension)"]];
+var SETNAMES={OGN:"Origins",OGS:"Proving Grounds",SFD:"Spiritforged",UNL:"Unleashed",VEN:"Vendetta",RAD:"Radiance"};
+function setCode(c){return String(c.id||"").split("-")[0].toUpperCase()}
+function setName(k){return SETNAMES[k]||k}
+function knownSets(){var found={};ALL.forEach(function(c){if(c&&c.id)found[setCode(c)]=1});Object.keys(INV).forEach(function(id){found[id.split("-")[0].toUpperCase()]=1});return Object.keys(found).sort(function(a,b){return setName(a).localeCompare(setName(b),"fr")})}
 function rk(c){var o=["common","uncommon","rare","epic","showcase","overnumbered"].indexOf(String(c.r||"").toLowerCase());return o<0?9:o}
 function doms(c){return(c.d||[]).map(function(x){return String(x).toLowerCase()})}
 function cmp(a,b){
 var A=CID[a],B=CID[b],k=SORT.k,v;
-if(k==="cost")v=(A.e==null?99:A.e)-(B.e==null?99:B.e);
+if(k==="set")v=setName(setCode(A)).localeCompare(setName(setCode(B)),"fr");
+else if(k==="cost")v=(A.e==null?99:A.e)-(B.e==null?99:B.e);
 else if(k==="rarity")v=rk(A)-rk(B);
 else if(k==="date")v=(ADDED[a]||0)-(ADDED[b]||0);
 else v=A.n.localeCompare(B.n);
@@ -435,16 +440,17 @@ var f=norm($("f").value);
 var list=ids.filter(function(id){
 var c=CID[id];
 if(SORT.dom.length&&!doms(c).some(function(d){return SORT.dom.indexOf(d)>=0}))return false;
+if(SORT.set!=="all"&&setCode(c)!==SORT.set)return false;
 if(SORT.type==="champion"&&!/champion/i.test(c.sp||""))return false;
 if(SORT.type==="spell"&&tyk(c)!=="spell")return false;
 if(SORT.type==="battlefield"&&tyk(c)!=="battlefield")return false;
 return!f||norm(c.n).indexOf(f)>=0||code(c).toLowerCase().indexOf(f)>=0||INV[id].some(function(e){return norm(e.l).indexOf(f)>=0});
 }).sort(cmp);
-$("sortb").textContent="Trier par"+(SORT.dom.length||SORT.type!=="all"?" •":"");
+$("sortb").textContent="Trier par"+(SORT.dom.length||SORT.type!=="all"||SORT.set!=="all"?" •":"");
 $("grid").innerHTML=list.map(function(id){return'<button class="gc" data-det="'+esc(id)+'" aria-label="'+esc(CID[id].n)+'"><img alt="" loading="lazy" referrerpolicy="no-referrer" src="'+esc(CID[id].img)+'"><span>×'+cnt(id)+'</span></button>'}).join("")||'<p class="note" style="grid-column:1/-1">Aucune carte à afficher. Ajoute des cartes ou change les filtres.</p>';
 }
 function renderSheet(){
-$("shb").innerHTML='<div class="shh"><h2>Trier par</h2><button class="chip" data-sh="1" aria-label="Fermer">✕</button></div><h3>Couleur</h3><div class="dg">'+DOMS.map(function(d){var on=SORT.dom.indexOf(d[0])>=0;return'<button class="dc" data-dom="'+d[0]+'" aria-pressed="'+on+'"><img src="dom-'+d[0]+'.png" alt="">'+d[1]+(on?" ✓":"")+'</button>'}).join("")+'</div><h3>Type de carte</h3>'+TYPES.map(function(t){var on=SORT.type===t[0];return'<button class="sr" data-ty="'+t[0]+'" aria-pressed="'+on+'"><span>'+t[1]+'</span>'+(on?"<b>✓</b>":"")+'</button>'}).join("")+'<h3>Autres tris</h3>'+SK.map(function(x){var on=SORT.k===x[0];return'<button class="sr" data-sk="'+x[0]+'" aria-pressed="'+on+'"><span>'+x[1]+'</span><i>'+(SORT.dir[x[0]]>0?"Croissant":"Décroissant")+' ›</i></button>'}).join("");
+$("shb").innerHTML='<div class="shh"><h2>Trier par</h2><button class="chip" data-sh="1" aria-label="Fermer">✕</button></div><h3>Couleur</h3><div class="dg">'+DOMS.map(function(d){var on=SORT.dom.indexOf(d[0])>=0;return'<button class="dc" data-dom="'+d[0]+'" aria-pressed="'+on+'"><img src="dom-'+d[0]+'.png" alt="">'+d[1]+(on?" ✓":"")+'</button>'}).join("")+'</div><h3>Type de carte</h3>'+TYPES.map(function(t){var on=SORT.type===t[0];return'<button class="sr" data-ty="'+t[0]+'" aria-pressed="'+on+'"><span>'+t[1]+'</span>'+(on?"<b>✓</b>":"")+'</button>'}).join("")+'<h3>Set / extension</h3><div class="set-filter"><button class="sr" data-set="all" aria-pressed="'+(SORT.set==="all")+'"><span>Tous les sets</span>'+(SORT.set==="all"?'<b>✓</b>':'')+'</button>'+knownSets().map(function(k){var on=SORT.set===k;return '<button class="sr" data-set="'+esc(k)+'" aria-pressed="'+on+'"><span>'+esc(setName(k))+' ('+esc(k)+')</span>'+(on?'<b>✓</b>':'')+'</button>'}).join("")+'</div><h3>Autres tris</h3>'+SK.map(function(x){var on=SORT.k===x[0];return'<button class="sr" data-sk="'+x[0]+'" aria-pressed="'+on+'"><span>'+x[1]+'</span><i>'+(SORT.dir[x[0]]>0?"Croissant":"Décroissant")+' ›</i></button>'}).join("");
 }
 function renderDet(){
 var c=CID[DID];if(!c)return;
@@ -489,6 +495,7 @@ else if(d.det){DID=d.det;show("det");renderDet()}
 else if(d.sh)$("sheet").hidden=true;
 else if(d.dom){var i=SORT.dom.indexOf(d.dom);if(i<0)SORT.dom.push(d.dom);else SORT.dom.splice(i,1);saveSort();renderSheet();renderColl()}
 else if(d.ty){SORT.type=d.ty;saveSort();renderSheet();renderColl()}
+else if(d.set){SORT.set=d.set;saveSort();renderSheet();renderColl()}
 else if(d.sk){if(SORT.k===d.sk)SORT.dir[d.sk]*=-1;else SORT.k=d.sk;saveSort();renderSheet();renderColl()}
 else if(d.add){var loc=curLoc();addCopy(d.add,loc,1);$("imsg").textContent="Ajouté : "+CID[d.add].n+", "+loc+" (×"+INV[d.add].filter(function(x){return x.l===loc})[0].n+")";$("imsg").style.color="var(--ok)"}
 else if(d.pm){addCopy(d.id,d.loc,+d.pm);refresh()}
