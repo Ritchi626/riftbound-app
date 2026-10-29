@@ -429,7 +429,7 @@ window.scrollTo(0,0);
 function leave(to){clearInterval(IV);G=null;show(to)}
 var DOMS=[["mind","Mind"],["fury","Fury"],["chaos","Chaos"],["calm","Calm"],["order","Order"],["body","Body"]];
 var TYPES=[["all","Toutes"],["champion","Champions"],["spell","Sorts"],["battlefield","Lieux"]];
-var SK=[["rarity","Rareté"],["cost","Coût"],["alpha","Ordre alphabétique"],["date","Date d’ajout"],["set","Set (extension)"]];
+var SK=[["rarity","Rareté"],["cost","Coût"],["alpha","Ordre alphabétique"],["date","Date d’ajout"]];
 var SETNAMES={OGN:"Origins",OGS:"Proving Grounds",SFD:"Spiritforged",UNL:"Unleashed",VEN:"Vendetta",RAD:"Radiance"};
 function setCode(c){return String(c.id||"").split("-")[0].toUpperCase()}
 function setName(k){return SETNAMES[k]||k}
@@ -472,11 +472,11 @@ if(SORT.type==="spell"&&tyk(c)!=="spell")return false;
 if(SORT.type==="battlefield"&&tyk(c)!=="battlefield")return false;
 return!f||norm(c.n).indexOf(f)>=0||code(c).toLowerCase().indexOf(f)>=0||INV[id].some(function(e){return norm(e.l).indexOf(f)>=0});
 }).sort(cmp);
-$("sortb").textContent="Trier par"+(SORT.dom.length||SORT.type!=="all"||SORT.set!=="all"?" •":"");
+$("sortb").textContent="Trier par"+(SORT.type!=="all"?" •":"");
 $("grid").innerHTML=list.map(function(id){return'<button class="gc" data-det="'+esc(id)+'" aria-label="'+esc(CID[id].n)+'"><img alt="" loading="lazy" referrerpolicy="no-referrer" src="'+esc(CID[id].img)+'"><span>×'+cnt(id)+'</span></button>'}).join("")||'<p class="note" style="grid-column:1/-1">Aucune carte à afficher. Ajoute des cartes ou change les filtres.</p>';
 }
 function renderSheet(){
-$("shb").innerHTML='<div class="shh"><h2>Trier par</h2><button class="chip" data-sh="1" aria-label="Fermer">✕</button></div><h3>Couleur</h3><div class="dg">'+DOMS.map(function(d){var on=SORT.dom.indexOf(d[0])>=0;return'<button class="dc" data-dom="'+d[0]+'" aria-pressed="'+on+'"><img src="dom-'+d[0]+'.png" alt="">'+d[1]+(on?" ✓":"")+'</button>'}).join("")+'</div><h3>Type de carte</h3>'+TYPES.map(function(t){var on=SORT.type===t[0];return'<button class="sr" data-ty="'+t[0]+'" aria-pressed="'+on+'"><span>'+t[1]+'</span>'+(on?"<b>✓</b>":"")+'</button>'}).join("")+'<h3>Set / extension</h3><div class="set-filter"><button class="sr" data-set="all" aria-pressed="'+(SORT.set==="all")+'"><span>Tous les sets</span>'+(SORT.set==="all"?'<b>✓</b>':'')+'</button>'+knownSets().map(function(k){var on=SORT.set===k;return '<button class="sr" data-set="'+esc(k)+'" aria-pressed="'+on+'"><span>'+esc(setName(k))+' ('+esc(k)+')</span>'+(on?'<b>✓</b>':'')+'</button>'}).join("")+'</div><h3>Autres tris</h3>'+SK.map(function(x){var on=SORT.k===x[0];return'<button class="sr" data-sk="'+x[0]+'" aria-pressed="'+on+'"><span>'+x[1]+'</span><i>'+(SORT.dir[x[0]]>0?"Croissant":"Décroissant")+' ›</i></button>'}).join("");
+$("shb").innerHTML='<div class="shh"><h2>Trier par</h2><button class="chip" data-sh="1" aria-label="Fermer">✕</button></div><h3>Type de carte</h3>'+TYPES.map(function(t){var on=SORT.type===t[0];return'<button class="sr" data-ty="'+t[0]+'" aria-pressed="'+on+'"><span>'+t[1]+'</span>'+(on?"<b>✓</b>":"")+'</button>'}).join("")+'<h3>Autres tris</h3>'+SK.map(function(x){var on=SORT.k===x[0];return'<button class="sr" data-sk="'+x[0]+'" aria-pressed="'+on+'"><span>'+x[1]+'</span><i>'+(SORT.dir[x[0]]>0?"Croissant":"Décroissant")+' ›</i></button>'}).join("");
 }
 function renderDet(){
 var c=CID[DID];if(!c)return;
