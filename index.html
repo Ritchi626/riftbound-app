@@ -81,6 +81,21 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 .dc[aria-pressed="true"],.sr[aria-pressed="true"]{border-color:var(--m);background:#232f78}
 :focus-visible{outline:2px solid var(--m);outline-offset:2px}
 
+
+/* Filtres rapides de la collection : discrets, utilisables au pouce */
+.quick-filters{padding:10px 12px 11px;margin:0 0 12px;background:var(--s1);border:1px solid var(--line);border-radius:15px}
+.quick-domains{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin-bottom:10px}
+.quick-domain{min-width:0;min-height:48px;display:grid;place-items:center;padding:5px 2px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--mut);cursor:pointer;position:relative}
+.quick-domain img{display:block;width:34px;height:34px;max-width:100%;object-fit:contain;opacity:.65;filter:saturate(.7)}
+.quick-domain[aria-pressed="true"]{background:#273765;border-color:#6984ed}
+.quick-domain[aria-pressed="true"] img{opacity:1;filter:none}
+.quick-domain:focus-visible,.quick-set-row select:focus-visible{outline:2px solid var(--m);outline-offset:2px}
+.quick-set-row{display:flex;align-items:center;gap:9px}
+.quick-set-row label{color:var(--mut);font-size:13px;white-space:nowrap}
+.quick-set-row select{flex:1;min-width:0;max-width:100%;border:1px solid var(--line);border-radius:9px;background:var(--s2);color:var(--ink);font:inherit;font-size:14px;padding:9px 10px}
+.quick-reset{border:0;background:transparent;color:#aabfff;font:inherit;font-size:12px;cursor:pointer;padding:8px 2px}
+@media(max-width:380px){.quick-filters{padding:8px}.quick-domains{gap:2px}.quick-domain img{width:30px;height:30px}.quick-set-row{gap:6px}}
+
 /* Ajouter des cartes — interface Rift Vault */
 .add-head{display:flex;align-items:center;gap:12px;margin:2px 0 22px}.add-head h1{font-size:23px;margin:0}.back-icon{border:0;background:none;color:var(--ink);font-size:30px;line-height:1;cursor:pointer;padding:0 4px}
 .add-switch{display:grid;grid-template-columns:1fr 1fr;padding:3px;border:1px solid #1b416a;background:#091a33;border-radius:30px;margin-bottom:24px}
@@ -170,6 +185,7 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 <div class="bar"><button class="chip" data-go="cmenu">Retour</button></div>
 <h1>Ma collection</h1>
 <div class="st" id="cst"></div>
+<div class="quick-filters" aria-label="Filtres rapides de collection"><div class="quick-domains" id="quickDomains" role="group" aria-label="Filtrer par domaine"></div><div class="quick-set-row"><label for="quickSet">Extension</label><select id="quickSet" aria-label="Filtrer par extension"><option value="all">Tous les sets</option></select><button type="button" id="quickReset" class="quick-reset" hidden>Effacer</button></div></div>
 <div class="srch"><input type="search" id="f" placeholder="Rechercher une carte…" autocomplete="off"><button class="chip" id="sortb">Trier par</button></div>
 <div class="grid" id="grid"></div>
 </section>
@@ -430,7 +446,17 @@ else v=A.n.localeCompare(B.n);
 if(!v)v=A.n.localeCompare(B.n);
 return v*SORT.dir[k];
 }
+function renderQuickFilters(){
+var dom=$('quickDomains'),set=$('quickSet');if(!dom||!set)return;
+dom.innerHTML=DOMS.map(function(d){var on=SORT.dom.indexOf(d[0])>=0;return '<button type="button" class="quick-domain" data-dom="'+d[0]+'" aria-label="'+d[1]+'" title="'+d[1]+'" aria-pressed="'+on+'"><img src="dom-'+d[0]+'.png" alt=""></button>'}).join('');
+var sets=knownSets(),selected=SORT.set;
+set.innerHTML='<option value="all">Tous les sets</option>'+sets.map(function(k){return '<option value="'+esc(k)+'">'+esc(setName(k))+'</option>'}).join('');
+if(selected!=="all"&&sets.indexOf(selected)<0)set.innerHTML+='<option value="'+esc(selected)+'">'+esc(setName(selected))+'</option>';
+set.value=selected;
+$('quickReset').hidden=!(SORT.dom.length||SORT.set!=="all");
+}
 function renderColl(){
+renderQuickFilters();
 var ids=Object.keys(INV).filter(function(id){return CID[id]}),tot=0,rar={};
 ids.forEach(function(id){var n=cnt(id);tot+=n;var k=rl(CID[id].r);rar[k]=(rar[k]||0)+n});
 var h='<div><b>'+tot+'</b><span>Total</span></div>';
@@ -500,6 +526,8 @@ else if(d.sk){if(SORT.k===d.sk)SORT.dir[d.sk]*=-1;else SORT.k=d.sk;saveSort();re
 else if(d.add){var loc=curLoc();addCopy(d.add,loc,1);$("imsg").textContent="Ajouté : "+CID[d.add].n+", "+loc+" (×"+INV[d.add].filter(function(x){return x.l===loc})[0].n+")";$("imsg").style.color="var(--ok)"}
 else if(d.pm){addCopy(d.id,d.loc,+d.pm);refresh()}
 });
+$('quickSet').addEventListener('change',function(){SORT.set=this.value;saveSort();renderColl();renderSheet()});
+$('quickReset').addEventListener('click',function(){SORT.dom=[];SORT.set='all';saveSort();renderColl();renderSheet()});
 document.addEventListener("keydown",function(e){var n=parseInt(e.key,10);if(G&&n>=1&&n<=4&&G.q&&n<=G.q.o.length&&e.target.tagName!=="INPUT"&&e.target.tagName!=="TEXTAREA")answer(n-1)});
 var DR=null;
 document.addEventListener("pointerdown",function(e){var w=e.target.closest&&e.target.closest("#wrap");if(!w||!$("cal").open||!G)return;var r=w.getBoundingClientRect();DR={r:r,x:(e.clientX-r.left)/r.width*100,y:(e.clientY-r.top)/r.height*100};e.preventDefault()});
