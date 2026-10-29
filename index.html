@@ -138,6 +138,8 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 .scan-tip{margin:8px 0 12px;color:#b5c8e9;font-size:13px}
 @media(max-width:370px){#ocrResults .scan-match{grid-template-columns:76px 1fr;gap:10px;min-height:130px}#ocrResults .scan-match img{width:76px;height:108px}#ocrResults .scan-match strong{font-size:18px}.scan-stage{height:36dvh}}
 @media(min-width:600px){.scan-tile{min-height:245px}}
+.backup-panel{margin-top:22px;padding:17px;border:1px solid rgba(130,166,240,.23);border-radius:16px;background:rgba(30,49,91,.25)}
+.backup-title{font-weight:750;font-size:16px}.backup-panel p{color:var(--muted,#9eabc9);font-size:13px;line-height:1.5;margin:8px 0 13px}.backup-actions{display:flex;flex-wrap:wrap;gap:9px}.backup-actions .go{flex:1;min-width:180px;margin:0}.backup-panel .backup-hint{font-size:12px;margin:11px 0 0}.coll-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}.coll-heading h1{margin-bottom:0}.coll-heading .chip{white-space:nowrap;font-size:13px}@media(max-width:390px){.coll-heading .chip{padding:9px;font-size:12px}.backup-actions .go{min-width:100%}}
 </style>
 </head>
 <body>
@@ -180,10 +182,11 @@ details{margin:16px 0 0;font-size:15px}pre{white-space:pre-wrap;font-size:12px;c
 <h1>Collection</h1><p class="sub">Ta collection, tes cartes, ton univers.</p>
 <button class="tile t-coll" data-go="coll"><i><img src="icon-collection.png" alt=""></i><div><b>Ma collection</b><span>Consulte et gère les cartes que tu possèdes</span></div></button>
 <button class="tile t-a" data-go="add"><i><img src="icon-add.png" alt=""></i><div><b>Ajouter des cartes</b><span>Ajoute de nouvelles cartes à ta collection</span></div></button>
+<div class="backup-panel"><div class="backup-title">Sauvegarde de ta collection</div><p>Conserve une copie de tes cartes, emplacements et notes, même si tu changes de téléphone.</p><div class="backup-actions"><button type="button" class="go" id="backupMenu">Télécharger ma sauvegarde</button><button type="button" class="go alt" id="restoreMenu">Restaurer une sauvegarde</button></div><p class="backup-hint">Fichier JSON à conserver en lieu sûr. La restauration remplace la collection actuelle.</p></div>
 </section>
 <section id="coll" hidden>
 <div class="bar"><button class="chip" data-go="cmenu">Retour</button></div>
-<h1>Ma collection</h1>
+<div class="coll-heading"><h1>Ma collection</h1><button type="button" class="chip" id="backupColl" aria-label="Sauvegarder ma collection">⇩ Sauvegarder</button></div>
 <div class="st" id="cst"></div>
 <div class="quick-filters" aria-label="Filtres rapides de collection"><div class="quick-domains" id="quickDomains" role="group" aria-label="Filtrer par domaine"></div><div class="quick-set-row"><label for="quickSet">Extension</label><select id="quickSet" aria-label="Filtrer par extension"><option value="all">Tous les sets</option></select><button type="button" id="quickReset" class="quick-reset" hidden>Effacer</button></div></div>
 <div class="srch"><input type="search" id="f" placeholder="Rechercher une carte…" autocomplete="off"><button class="chip" id="sortb">Trier par</button></div>
@@ -621,6 +624,9 @@ LASTDECK=r.cards.map(function(c){return c.id});save();
 if(r.miss.length&&!confirm(r.cards.length+" cartes reconnues. Non reconnues : "+r.miss.slice(0,8).join(" ; ")+(r.miss.length>8?" …":"")+". Continuer ?"))return;
 begin({title:"Mon deck",pool:r.cards,modes:["cout","nom","effet"]});
 };
+$("backupMenu").onclick=function(){$("xj").click()};
+$("restoreMenu").onclick=function(){$("xi").click()};
+$("backupColl").onclick=function(){$("xj").click()};
 $("xj").onclick=function(){dl("collection-riftbound.json","application/json",JSON.stringify({version:1,inv:INV,notes:NOTES,added:ADDED}))};
 $("xc").onclick=function(){
 var rows=["Code;Nom;Emplacement;Quantité"];
